@@ -1,5 +1,5 @@
 # modules/processing.py
-# CPU-bound image processing functions
+# Fungsi pemrosesan gambar CPU-bound
 from typing import Dict, Tuple
 from PIL import Image
 import numpy as np
@@ -8,21 +8,19 @@ import time
 import os
 
 def process_image_file(filepath: str, heavy: bool = False) -> Tuple[str, float, float, float, float]:
-    # Proses gambar dari file path: load, resize, hitung rata-rata RGB, return elapsed time.
-    # Jika heavy=True, tambah kerja CPU ekstra (GaussianBlur dan histogram).
+    # Proses gambar: load, resize, hitung rata-rata RGB
+    # Jika heavy=True, tambah kerja CPU ekstra
     start = time.perf_counter()
     try:
         with Image.open(filepath) as img:
             img = img.convert("RGB")
             img = img.resize((128, 128), resample=Image.Resampling.LANCZOS)
             if heavy:
-                # Tambah kerja CPU: multiple GaussianBlur
+                # Tambah kerja CPU: GaussianBlur + histogram
                 from PIL import ImageFilter
                 img = img.filter(ImageFilter.GaussianBlur(radius=2))
                 img = img.filter(ImageFilter.GaussianBlur(radius=1))
-                # Hitung histogram (extra computation)
                 hist = img.histogram()
-                # Lakukan operasi dummy pada histogram
                 _ = sum(hist) / len(hist)
             arr = np.array(img, dtype=np.float32)
             avg = arr.mean(axis=(0,1))

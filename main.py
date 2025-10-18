@@ -1,5 +1,5 @@
 # main.py
-# Main entry point for parallel image processing
+# Titik masuk utama untuk pemrosesan gambar paralel
 import argparse
 import os
 import random
@@ -14,7 +14,7 @@ NAME = "Matin Rusydan"
 NIM = "237006030"  # string
 
 def print_boxed_summary(name: str, nim: str, threads: int, processes: int, data: int, total_time: float, speedup: float, efficiency: float) -> None:
-    # Print boxed summary seperti contoh.
+    # Mencetak ringkasan dalam kotak seperti contoh.
     line1 = f"Hybrid Project by: {name} ({nim})"
     line2 = f"Threads: {threads} | Processes: {processes} | Data: {data}"
     line3 = f"Total Time: {total_time:.2f}s | Speedup: {speedup:.2f} | Efficiency: {efficiency:.1f}%"
@@ -26,7 +26,7 @@ def print_boxed_summary(name: str, nim: str, threads: int, processes: int, data:
         print(f"│ {line3:<{width-4}} │")
         print("└" + "─" * (width - 2) + "┘")
     except UnicodeEncodeError:
-        # Fallback for Windows console
+        # Fallback untuk console Windows
         print("+" + "-" * (width - 2) + "+")
         print(f"| {line1:<{width-4}} |")
         print(f"| {line2:<{width-4}} |")
@@ -39,23 +39,23 @@ def main_cli():
         description="Parallel Image Processor — Thread + ProcessPool (UTS Project)"
     )
 
-    # Enable heavier CPU workload per image (e.g., blur or histogram)
+    # Mengaktifkan beban kerja CPU yang lebih berat per gambar (contoh: blur atau histogram)
     parser.add_argument("--heavy", action="store_true",
                         help="Menjalankan mode CPU berat (opsional)")
 
-    # Run multiple configuration experiments
+    # Menjalankan beberapa konfigurasi eksperimen
     parser.add_argument("--exp", action="store_true",
                         help="Menjalankan mode eksperimen (beberapa konfigurasi threads/process/data)")
 
-    # Skip plot generation
+    # Melewati pembuatan grafik
     parser.add_argument("--no-plot", action="store_true",
                         help="Melewati pembuatan grafik hasil")
 
-    # Custom output CSV path (default: results/results.csv)
+    # Lokasi output CSV custom (default: results/results.csv)
     parser.add_argument("--out", type=str, default="results/results.csv",
                         help="Lokasi file CSV output (default: results/results.csv)")
 
-    # Verbose mode for detailed logging
+    # Mode verbose untuk logging detail
     parser.add_argument("-v", "--verbose", action="store_true",
                         help="Menampilkan log proses (I/O dan CPU progress)")
 
@@ -63,7 +63,7 @@ def main_cli():
 
     # Parse NIM -> parameters
     num_threads, num_processes, num_data, _, _, _ = parse_nim(NIM)
-    # Set reproducibility seeds based on NIM
+    # Mengatur seed reproducibility berdasarkan NIM
     random.seed(int(NIM))
     np.random.seed(int(NIM))
 
@@ -79,9 +79,9 @@ def main_cli():
     print(f"Computed params -> threads: {num_threads}, processes: {num_processes}, data: {num_data}")
     print()
 
-    # Ensure data folder exists
+    # Pastikan folder data ada
     files = []
-    image_folder = "data"  # Fixed folder
+    image_folder = "data"  # Folder tetap
     if not files:
         files = gather_image_files(image_folder, num_data)
 
@@ -94,7 +94,7 @@ def main_cli():
     print(f"[INFO] Using {data_count} images from '{image_folder}'")
 
     if args.exp:
-        # Run experiments mode
+        # Jalankan mode eksperimen
         experiment_configs = [
             {"label": "serial_baseline", "threads": 1, "processes": 1, "data": num_data},
             {"label": "nim_config", "threads": num_threads, "processes": num_processes, "data": num_data},
@@ -106,7 +106,7 @@ def main_cli():
         exp_result = run_experiments(experiment_configs, files, 3, args.verbose, args.heavy)
         exp_results = exp_result["results"]
 
-        # Save experiments outputs
+        # Simpan output eksperimen
         exp_csv = "results/experiments.csv"
         exp_json = "results/experiments.json"
         exp_dir = "results"
@@ -114,12 +114,12 @@ def main_cli():
         save_experiments_json(exp_results, exp_json)
         plot_experiments(exp_results, exp_dir)
 
-        # Print table and report
+        # Cetak tabel dan laporan
         table = print_experiments_table(exp_results)
         print("\nExperiments Results:")
         print(table)
 
-        # Save report
+        # Simpan laporan
         with open("results/experiments_report.txt", "w") as f:
             f.write("Experiments Report\n")
             f.write("=" * 50 + "\n")
@@ -136,7 +136,7 @@ def main_cli():
 
         print(f"[OK] Experiments saved to {exp_csv}, {exp_json}, and plots in {exp_dir}")
 
-        # Verification
+        # Verifikasi
         with open("results/experiments_verification.txt", "w") as f:
             f.write("Experiments Verification\n")
             f.write("=" * 30 + "\n")
@@ -165,7 +165,7 @@ def main_cli():
         "speedup": 1.0,
         "efficiency_percent": 100.0
     })
-    # Use serial avg_colors for audit
+    # Gunakan serial avg_colors untuk audit
     all_avg_colors = serial_res["avg_colors"]
 
     # 2) NIM config
@@ -206,7 +206,7 @@ def main_cli():
     })
     print(f"  Time: {T_alt:.6f} s, throughput: {alt_res['throughput']:.6f} img/s, speedup: {speedup_alt:.3f}, efficiency: {efficiency_alt:.2f}%")
 
-    # Save CSV & JSON
+    # Simpan CSV & JSON
     save_csv(results_rows, out_csv)
     summary = {
         "name": NAME,
@@ -217,29 +217,29 @@ def main_cli():
     save_json(summary, out_json)
     print(f"[OK] Results saved to {out_csv} and {out_json}")
 
-    # Plot unless skipped
+    # Buat plot kecuali dilewati
     if not args.no_plot:
         plot_results(results_rows, out_png)
         print(f"[OK] Plot saved to {out_png}")
     else:
         print("[INFO] Plot generation skipped (--no-plot).")
 
-    # Color audit and summary
+    # Audit warna dan ringkasan
     global_avg, stds = compute_global_avg(all_avg_colors)
     variation = audit_color_variation(all_avg_colors)
     variation_str = "YES" if variation else "NO"
 
-    # Print boxed summary for nim_config
+    # Cetak ringkasan dalam kotak untuk nim_config
     nim_row = next(r for r in results_rows if r["mode"] == "nim_config")
     print_boxed_summary(NAME, NIM, num_threads, num_processes, data_count,
                         float(nim_row["time_s"]), float(nim_row["speedup"]), float(nim_row["efficiency_percent"]))
 
-    # Print sample avg colors
+    # Cetak contoh rata-rata warna
     print("Sample avg colors (first 5):")
     for filename, (r, g, b) in zip([os.path.basename(f) for f in files[:5]], all_avg_colors[:5]):
         print(f" - {filename}: ({r:.1f}, {g:.1f}, {b:.1f})")
 
-    # Print global avg and variation
+    # Cetak rata-rata global dan variasi
     print(f"Global avg color: ({global_avg[0]:.1f}, {global_avg[1]:.1f}, {global_avg[2]:.1f})")
     print(f"Color variation: {variation_str} (stddev R: {stds[0]:.2f}, G: {stds[1]:.2f}, B: {stds[2]:.2f})")
 

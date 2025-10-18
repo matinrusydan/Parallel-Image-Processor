@@ -1,5 +1,5 @@
 # modules/utils.py
-# Utility functions for NIM parsing, output saving, and plotting
+# Fungsi utilitas untuk parsing NIM, simpan output, dan plotting
 import statistics
 import json
 import csv
@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 import os
 
 def parse_nim(nim_str: str):
-    # Parse NIM untuk dapatkan parameter paralel.
+    # Parse NIM untuk dapatkan parameter paralel
     s = str(nim_str).zfill(9)
     dua_terakhir = int(s[-2:])
     dua_tengah = int(s[3:5])
@@ -21,7 +21,7 @@ def parse_nim(nim_str: str):
     return num_threads, num_processes, num_data, dua_terakhir, dua_tengah, tiga_terakhir
 
 def save_csv(rows: List[Dict[str,Any]], out_csv: str) -> None:
-    # Simpan hasil ke CSV.
+    # Simpan hasil ke CSV
     header = ["mode","num_threads","num_processes","data_count","time_s","throughput","speedup","efficiency_percent"]
     os.makedirs(os.path.dirname(out_csv) or ".", exist_ok=True)
     with open(out_csv, "w", newline='', encoding='utf-8') as f:
@@ -31,13 +31,13 @@ def save_csv(rows: List[Dict[str,Any]], out_csv: str) -> None:
             w.writerow(r)
 
 def save_json(summary: Dict[str,Any], out_json: str) -> None:
-    # Simpan summary ke JSON.
+    # Simpan summary ke JSON
     os.makedirs(os.path.dirname(out_json) or ".", exist_ok=True)
     with open(out_json, "w", encoding='utf-8') as f:
         json.dump(summary, f, indent=2)
 
 def compute_global_avg(per_image_avgs: List[Tuple[float, float, float]]) -> Tuple[Tuple[float, float, float], Tuple[float, float, float]]:
-    # Hitung rata-rata global dan stddev per channel.
+    # Hitung rata-rata global dan stddev per channel
     if not per_image_avgs:
         return ((0.0, 0.0, 0.0), (0.0, 0.0, 0.0))
     import numpy as np
@@ -47,12 +47,12 @@ def compute_global_avg(per_image_avgs: List[Tuple[float, float, float]]) -> Tupl
     return ((means[0], means[1], means[2]), (stds[0], stds[1], stds[2]))
 
 def audit_color_variation(per_image_avgs: List[Tuple[float, float, float]], threshold: float = 1.0) -> bool:
-    # Audit variasi warna dataset.
+    # Audit variasi warna dataset
     _, stds = compute_global_avg(per_image_avgs)
     return all(s > threshold for s in stds)
 
 def plot_results(csv_rows: List[Dict[str,Any]], out_png: str) -> None:
-    # Buat plot hasil eksekusi.
+    # Buat plot hasil eksekusi
     modes = [r["mode"] for r in csv_rows]
     times = [float(r["time_s"]) for r in csv_rows]
     speedups = [float(r["speedup"]) for r in csv_rows]
@@ -80,7 +80,7 @@ def plot_results(csv_rows: List[Dict[str,Any]], out_png: str) -> None:
     plt.close()
 
 def plot_experiments(results: List[Dict[str, Any]], out_dir: str) -> None:
-    # Buat plot untuk eksperimen.
+    # Buat plot untuk eksperimen
     import os
     os.makedirs(out_dir, exist_ok=True)
 
@@ -139,7 +139,7 @@ def plot_experiments(results: List[Dict[str, Any]], out_dir: str) -> None:
     plt.close()
 
 def save_experiments_csv(results: List[Dict[str, Any]], out_csv: str) -> None:
-    # Simpan hasil eksperimen ke CSV.
+    # Simpan hasil eksperimen ke CSV
     header = ["No", "Jumlah Thread", "Jumlah Process", "Data/Task", "Waktu (s)", "Speedup", "Efisiensi (%)"]
     os.makedirs(os.path.dirname(out_csv) or ".", exist_ok=True)
     with open(out_csv, "w", newline='', encoding='utf-8') as f:
@@ -149,13 +149,13 @@ def save_experiments_csv(results: List[Dict[str, Any]], out_csv: str) -> None:
             w.writerow([i, r["threads"], r["processes"], r["data_count"], f"{r['time_s']:.6f}", f"{r['speedup']:.6f}", f"{r['efficiency_percent']:.2f}"])
 
 def save_experiments_json(results: List[Dict[str, Any]], out_json: str) -> None:
-    # Simpan hasil eksperimen ke JSON.
+    # Simpan hasil eksperimen ke JSON
     os.makedirs(os.path.dirname(out_json) or ".", exist_ok=True)
     with open(out_json, "w", encoding='utf-8') as f:
         json.dump({"experiments": results}, f, indent=2)
 
 def print_experiments_table(results: List[Dict[str, Any]]) -> str:
-    # Cetak tabel ASCII untuk eksperimen.
+    # Cetak tabel ASCII untuk eksperimen
     table = []
     table.append("No | Jumlah Thread | Jumlah Process | Data/Task | Waktu (s) | Speedup | Efisiensi (%)")
     table.append("-" * 80)

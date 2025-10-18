@@ -1,5 +1,5 @@
 # modules/pipeline.py
-# Pipeline runner functions
+# Fungsi runner pipeline
 import statistics
 from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor, as_completed
 import time
@@ -9,7 +9,7 @@ from typing import List, Dict, Any, Optional
 from modules.processing import process_image_file
 
 def run_serial(file_list: List[str], verbose: bool = False, heavy: bool = False) -> Dict[str, Any]:
-    # Jalankan baseline serial processing untuk perbandingan waktu.
+    # Jalankan baseline serial untuk perbandingan
     start = time.perf_counter()
     processed = []
     task_times = []
@@ -27,12 +27,12 @@ def run_serial(file_list: List[str], verbose: bool = False, heavy: bool = False)
     elapsed = end - start
     count = len(processed)
     throughput = count / elapsed if elapsed > 0 else float("inf")
-    # Extract avg colors for audit
+    # Ambil avg colors untuk audit
     avg_colors = [(r, g, b) for _, r, g, b in processed]
     return {"elapsed": elapsed, "throughput": throughput, "processed": processed, "count": count, "avg_colors": avg_colors, "task_times": task_times}
 
 def run_experiments(experiment_configs: List[Dict[str, Any]], file_list: List[str], runs_per_config: int = 3, verbose: bool = False, heavy: bool = False) -> Dict[str, Any]:
-    # Jalankan eksperimen dengan berbagai konfigurasi.
+    # Jalankan eksperimen berbagai konfigurasi
     results = []
     serial_baseline = None
 
@@ -81,27 +81,26 @@ def run_experiments(experiment_configs: List[Dict[str, Any]], file_list: List[st
     return {"results": results, "serial_baseline": serial_baseline}
 
 def run_configuration(num_threads: int, num_processes: int, file_list: List[str], verbose: bool = False, chunksize: Optional[int] = None, heavy: bool = False) -> Dict[str, Any]:
-    # Jalankan pipeline paralel dengan ThreadPool untuk I/O dan ProcessPool untuk CPU.
+    # Jalankan pipeline paralel ThreadPool + ProcessPool
     io_start = time.perf_counter()
-    # Step A: collect file paths (no loading to bytes)
-    loaded_paths = file_list  # just paths now
+    # Step A: kumpulkan file paths
+    loaded_paths = file_list
     io_end = time.perf_counter()
     io_time = io_end - io_start
 
-    # Step B: process with processes (pass paths, not bytes)
+    # Step B: proses dengan processes
     cpu_start = time.perf_counter()
     processed = []
     task_times = []
-    chunksize = chunksize or max(1, len(loaded_paths) // (num_processes * 8))  # Updated heuristic
+    chunksize = chunksize or max(1, len(loaded_paths) // (num_processes * 8))
     with ProcessPoolExecutor(max_workers=num_processes) as ppool:
-        # Use map with chunksize for better distribution
-        # Pass heavy parameter via partial function
+        # Gunakan map dengan chunksize
         from functools import partial
         process_func = partial(process_image_file, heavy=heavy)
         results = ppool.map(process_func, loaded_paths, chunksize=chunksize)
         for i, result in enumerate(results, start=1):
-            processed.append(result[:4])  # exclude elapsed
-            task_times.append(result[4])  # elapsed per task
+            processed.append(result[:4])
+            task_times.append(result[4])
             if verbose and (i % 10 == 0 or i == len(loaded_paths)):
                 print(f"[INFO] Processed {i}/{len(loaded_paths)}")
     cpu_end = time.perf_counter()
@@ -110,6 +109,6 @@ def run_configuration(num_threads: int, num_processes: int, file_list: List[str]
     total_elapsed = io_time + cpu_time
     count = len(processed)
     throughput = count / total_elapsed if total_elapsed > 0 else float("inf")
-    # Extract avg colors for audit
+    # Ambil avg colors untuk audit
     avg_colors = [(r, g, b) for _, r, g, b in processed]
     return {"elapsed": total_elapsed, "throughput": throughput, "processed": processed, "count": count, "avg_colors": avg_colors, "io_time": io_time, "cpu_time": cpu_time, "task_times": task_times}
