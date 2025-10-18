@@ -1,5 +1,6 @@
 # modules/utils.py
 # Utility functions for NIM parsing, output saving, and plotting
+import statistics
 import json
 import csv
 from typing import List, Dict, Any, Tuple
@@ -77,3 +78,87 @@ def plot_results(csv_rows: List[Dict[str,Any]], out_png: str) -> None:
     plt.tight_layout()
     plt.savefig(out_png)
     plt.close()
+
+def plot_experiments(results: List[Dict[str, Any]], out_dir: str) -> None:
+    # Buat plot untuk eksperimen.
+    import os
+    os.makedirs(out_dir, exist_ok=True)
+
+    # Plot 1: Time vs Threads
+    thread_data = {}
+    for r in results:
+        t = r["threads"]
+        if t not in thread_data:
+            thread_data[t] = []
+        thread_data[t].append(r["time_s"])
+    threads = sorted(thread_data.keys())
+    times = [statistics.mean(thread_data[t]) for t in threads]
+
+    plt.figure()
+    plt.plot(threads, times, marker='o')
+    plt.xlabel("Jumlah Thread")
+    plt.ylabel("Waktu (s)")
+    plt.title("Time vs Jumlah Thread")
+    plt.grid(True)
+    plt.savefig(os.path.join(out_dir, "time_vs_threads.png"))
+    plt.close()
+
+    # Plot 2: Time vs Processes
+    process_data = {}
+    for r in results:
+        p = r["processes"]
+        if p not in process_data:
+            process_data[p] = []
+        process_data[p].append(r["time_s"])
+    processes = sorted(process_data.keys())
+    times_p = [statistics.mean(process_data[p]) for p in processes]
+
+    plt.figure()
+    plt.plot(processes, times_p, marker='o')
+    plt.xlabel("Jumlah Process")
+    plt.ylabel("Waktu (s)")
+    plt.title("Time vs Jumlah Process")
+    plt.grid(True)
+    plt.savefig(os.path.join(out_dir, "time_vs_processes.png"))
+    plt.close()
+
+    # Plot 3: Speedup vs Config
+    labels = [r["label"] for r in results]
+    speedups = [r["speedup"] for r in results]
+    best_idx = speedups.index(max(speedups))
+
+    plt.figure()
+    plt.bar(labels, speedups)
+    plt.xlabel("Konfigurasi")
+    plt.ylabel("Speedup")
+    plt.title("Speedup vs Konfigurasi")
+    plt.xticks(rotation=45)
+    plt.annotate(f"Best: {labels[best_idx]}", xy=(best_idx, speedups[best_idx]), xytext=(best_idx-0.5, speedups[best_idx]+0.1))
+    plt.tight_layout()
+    plt.savefig(os.path.join(out_dir, "speedup_vs_config.png"))
+    plt.close()
+
+def save_experiments_csv(results: List[Dict[str, Any]], out_csv: str) -> None:
+    # Simpan hasil eksperimen ke CSV.
+    header = ["No", "Jumlah Thread", "Jumlah Process", "Data/Task", "Waktu (s)", "Speedup", "Efisiensi (%)"]
+    os.makedirs(os.path.dirname(out_csv) or ".", exist_ok=True)
+    with open(out_csv, "w", newline='', encoding='utf-8') as f:
+        w = csv.writer(f)
+        w.writerow(header)
+        for i, r in enumerate(results, 1):
+            w.writerow([i, r["threads"], r["processes"], r["data_count"], f"{r['time_s']:.6f}", f"{r['speedup']:.6f}", f"{r['efficiency_percent']:.2f}"])
+
+def save_experiments_json(results: List[Dict[str, Any]], out_json: str) -> None:
+    # Simpan hasil eksperimen ke JSON.
+    os.makedirs(os.path.dirname(out_json) or ".", exist_ok=True)
+    with open(out_json, "w", encoding='utf-8') as f:
+        json.dump({"experiments": results}, f, indent=2)
+
+def print_experiments_table(results: List[Dict[str, Any]]) -> str:
+    # Cetak tabel ASCII untuk eksperimen.
+    table = []
+    table.append("No | Jumlah Thread | Jumlah Process | Data/Task | Waktu (s) | Speedup | Efisiensi (%)")
+    table.append("-" * 80)
+    for i, r in enumerate(results, 1):
+        table.append(f"{i:2} | {r['threads']:13} | {r['processes']:14} | {r['data_count']:9} | {r['time_s']:9.6f} | {r['speedup']:6.6f} | {r['efficiency_percent']:11.2f}")
+    return "\n".join(table)

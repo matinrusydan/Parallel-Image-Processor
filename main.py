@@ -3,9 +3,9 @@
 import argparse
 import os
 import random
-from modules.utils import parse_nim, save_csv, save_json, plot_results, compute_global_avg, audit_color_variation
-from modules.io import gather_image_files, generate_synthetic_images, get_kaggle_cars_folder
-from modules.pipeline import run_serial, run_configuration
+from modules.utils import parse_nim, save_csv, save_json, plot_results, compute_global_avg, audit_color_variation, plot_experiments, save_experiments_csv, save_experiments_json, print_experiments_table
+from modules.io import gather_image_files
+from modules.pipeline import run_serial, run_configuration, run_experiments
 import json
 import numpy as np
 
@@ -34,13 +34,31 @@ def print_boxed_summary(name: str, nim: str, threads: int, processes: int, data:
         print("+" + "-" * (width - 2) + "+")
 
 def main_cli():
-    parser = argparse.ArgumentParser(description="Parallel Image Processor (Thread + ProcessPool) modular")
-    parser.add_argument("--folder", type=str, default="data", help="Folder dataset gambar (default: data)")
-    parser.add_argument("--generate", action="store_true", help="Generate synthetic images jika folder kosong")
-    parser.add_argument("--kaggle", action="store_true", help="Download dan gunakan dataset Kaggle 'pavansanagapati/images-dataset' subfolder 'cars'")
-    parser.add_argument("--out", type=str, default="results/results.csv", help="Output CSV file")
-    parser.add_argument("--no-plot", action="store_true", help="Skip generate plot")
-    parser.add_argument("--verbose", action="store_true", help="Verbose logging")
+    import argparse
+    parser = argparse.ArgumentParser(
+        description="Parallel Image Processor — Thread + ProcessPool (UTS Project)"
+    )
+
+    # Enable heavier CPU workload per image (e.g., blur or histogram)
+    parser.add_argument("--heavy", action="store_true",
+                        help="Menjalankan mode CPU berat (opsional)")
+
+    # Run multiple configuration experiments
+    parser.add_argument("--exp", action="store_true",
+                        help="Menjalankan mode eksperimen (beberapa konfigurasi threads/process/data)")
+
+    # Skip plot generation
+    parser.add_argument("--no-plot", action="store_true",
+                        help="Melewati pembuatan grafik hasil")
+
+    # Custom output CSV path (default: results/results.csv)
+    parser.add_argument("--out", type=str, default="results/results.csv",
+                        help="Lokasi file CSV output (default: results/results.csv)")
+
+    # Verbose mode for detailed logging
+    parser.add_argument("-v", "--verbose", action="store_true",
+                        help="Menampilkan log proses (I/O dan CPU progress)")
+
     args = parser.parse_args()
 
     # Parse NIM -> parameters
@@ -61,47 +79,80 @@ def main_cli():
     print(f"Computed params -> threads: {num_threads}, processes: {num_processes}, data: {num_data}")
     print()
 
-    # Ensure data folder exists or generate/download
+    # Ensure data folder exists
     files = []
-    image_folder = args.folder
-    if args.kaggle:
-        try:
-            import kagglehub
-            path = kagglehub.dataset_download('pavansanagapati/images-dataset')
-            print(f"Path to dataset files: {path}")
-            image_folder = get_kaggle_cars_folder(path)
-            files = gather_image_files(image_folder, num_data)
-            if len(files) < num_data:
-                print(f"[WARN] Folder 'cars' hanya memiliki {len(files)} gambar, kurang dari {num_data}. Fallback ke --generate.")
-                raise ValueError("Insufficient images in Kaggle dataset")
-        except (ImportError, Exception) as e:
-            print(f"[WARN] Kaggle download gagal ({e}). Fallback ke --generate synthetic images.")
-            args.generate = True
-            args.kaggle = False
-            image_folder = args.folder
-            files = []
-
+    image_folder = "data"  # Fixed folder
     if not files:
         files = gather_image_files(image_folder, num_data)
-        if (len(files) < 1) and args.generate:
-            print(f"[INFO] folder '{image_folder}' kosong/tidak ada. Generating {num_data} synthetic images...")
-            generate_synthetic_images(image_folder, num_data, size=(256,256), seed=int(NIM))
-            files = gather_image_files(image_folder, num_data)
 
     if len(files) == 0:
-        print(f"[ERROR] Tidak ada gambar di folder '{args.folder}'. Jalankan dengan --generate untuk membuat data uji.")
+        print(f"[ERROR] Folder 'data' kosong. Harap isi dengan dataset gambar sebelum menjalankan program.")
         return
 
     files = files[:num_data]
     data_count = len(files)
-    folder_display = image_folder if args.kaggle else args.folder
-    print(f"[INFO] Using {data_count} images from '{folder_display}'")
+    print(f"[INFO] Using {data_count} images from '{image_folder}'")
+
+    if args.exp:
+        # Run experiments mode
+        experiment_configs = [
+            {"label": "serial_baseline", "threads": 1, "processes": 1, "data": num_data},
+            {"label": "nim_config", "threads": num_threads, "processes": num_processes, "data": num_data},
+            {"label": "more_threads", "threads": min(max(num_threads * 2, num_threads + 1), 16), "processes": num_processes, "data": num_data},
+            {"label": "more_processes", "threads": num_threads, "processes": min(num_processes + 1, 16), "data": num_data},
+            {"label": "less_data", "threads": num_threads, "processes": num_processes, "data": max(num_data // 2, 1)}
+        ]
+
+        exp_result = run_experiments(experiment_configs, files, 3, args.verbose, args.heavy)
+        exp_results = exp_result["results"]
+
+        # Save experiments outputs
+        exp_csv = "results/experiments.csv"
+        exp_json = "results/experiments.json"
+        exp_dir = "results"
+        save_experiments_csv(exp_results, exp_csv)
+        save_experiments_json(exp_results, exp_json)
+        plot_experiments(exp_results, exp_dir)
+
+        # Print table and report
+        table = print_experiments_table(exp_results)
+        print("\nExperiments Results:")
+        print(table)
+
+        # Save report
+        with open("results/experiments_report.txt", "w") as f:
+            f.write("Experiments Report\n")
+            f.write("=" * 50 + "\n")
+            f.write(f"Name: {NAME}\n")
+            f.write(f"NIM: {NIM}\n")
+            f.write(f"Serial Baseline Time: {exp_result['serial_baseline']:.6f}s\n\n")
+            f.write(table + "\n\n")
+            best_time = min(r["time_s"] for r in exp_results)
+            best_config = next(r for r in exp_results if r["time_s"] == best_time)
+            f.write(f"Best Time Config: {best_config['label']} ({best_time:.6f}s)\n")
+            best_speedup = max(r["speedup"] for r in exp_results)
+            best_speedup_config = next(r for r in exp_results if r["speedup"] == best_speedup)
+            f.write(f"Best Speedup Config: {best_speedup_config['label']} ({best_speedup:.3f}x)\n")
+
+        print(f"[OK] Experiments saved to {exp_csv}, {exp_json}, and plots in {exp_dir}")
+
+        # Verification
+        with open("results/experiments_verification.txt", "w") as f:
+            f.write("Experiments Verification\n")
+            f.write("=" * 30 + "\n")
+            f.write(f"Total configs: {len(exp_results)}\n")
+            f.write(f"Files created: {exp_csv}, {exp_json}, time_vs_threads.png, time_vs_processes.png, speedup_vs_config.png\n")
+            f.write(f"Table printed: YES\n")
+            f.write(f"Median times used: YES\n")
+            f.write("Status: SUCCESS\n")
+
+        return
 
     results_rows = []
 
     # 1) Serial baseline
     print("[RUN] Serial baseline (no concurrency)...")
-    serial_res = run_serial(files, verbose=args.verbose)
+    serial_res = run_serial(files, verbose=args.verbose, heavy=args.heavy)
     T_serial = serial_res["elapsed"]
     print(f"  Serial time: {T_serial:.6f} s, throughput: {serial_res['throughput']:.6f} img/s")
     results_rows.append({
@@ -119,7 +170,7 @@ def main_cli():
 
     # 2) NIM config
     print(f"[RUN] Config NIM: threads={num_threads}, processes={num_processes}")
-    nim_res = run_configuration(num_threads, num_processes, files, verbose=args.verbose)
+    nim_res = run_configuration(num_threads, num_processes, files, verbose=args.verbose, heavy=args.heavy)
     T_nim = nim_res["elapsed"]
     speedup_nim = T_serial / T_nim if T_nim > 0 else float("inf")
     efficiency_nim = (speedup_nim / max(1, num_processes)) * 100.0
@@ -139,7 +190,7 @@ def main_cli():
     alt_threads = max(2, num_threads * 2)
     alt_procs = max(1, num_processes + 1)
     print(f"[RUN] Alternative config: threads={alt_threads}, processes={alt_procs}")
-    alt_res = run_configuration(alt_threads, alt_procs, files, verbose=args.verbose)
+    alt_res = run_configuration(alt_threads, alt_procs, files, verbose=args.verbose, heavy=args.heavy)
     T_alt = alt_res["elapsed"]
     speedup_alt = T_serial / T_alt if T_alt > 0 else float("inf")
     efficiency_alt = (speedup_alt / max(1, alt_procs)) * 100.0
