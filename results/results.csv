@@ -1,0 +1,4 @@
+mode,num_threads,num_processes,data_count,time_s,throughput,speedup,efficiency_percent
+serial,1,1,300,2.335137,128.472131,1.0,100.0
+nim_config,4,2,300,2.083637,143.978979,1.120702,56.04
+alt_config,8,3,300,1.733960,173.014392,1.346708,44.89
