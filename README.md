@@ -1,6 +1,13 @@
 # Parallel Image Processor (Thread + ProcessPool)
 
 Proyek UTS untuk pemrosesan gambar paralel menggunakan ThreadPoolExecutor dan ProcessPoolExecutor.
+## Clone Repository
+
+```bash
+git clone https://github.com/matinrusydan/Parallel-Image-Processor
+cd Parallel-Image-Processor
+```
+
 
 ## Instalasi
 
