@@ -4,7 +4,7 @@ Proyek UTS untuk pemrosesan gambar paralel menggunakan ThreadPoolExecutor dan Pr
 ## Clone Repository
 
 ```bash
-git clone https://github.com/matinrusydan/Parallel-Image-Processor
+git clone https://github.com/matinrusydan/Parallel-Image-Processor.git
 cd Parallel-Image-Processor
 ```
 
