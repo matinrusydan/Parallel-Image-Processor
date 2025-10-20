@@ -140,13 +140,14 @@ def plot_experiments(results: List[Dict[str, Any]], out_dir: str) -> None:
 
 def save_experiments_csv(results: List[Dict[str, Any]], out_csv: str) -> None:
     # Simpan hasil eksperimen ke CSV
-    header = ["No", "Jumlah Thread", "Jumlah Process", "Data/Task", "Waktu (s)", "Speedup", "Efisiensi (%)"]
+    header = ["No", "Jumlah Thread", "Jumlah Process", "Data/Task", "Waktu (s)", "Speedup", "Efisiensi (%)", "Avg RGB", "Warna"]
     os.makedirs(os.path.dirname(out_csv) or ".", exist_ok=True)
     with open(out_csv, "w", newline='', encoding='utf-8') as f:
         w = csv.writer(f)
         w.writerow(header)
         for i, r in enumerate(results, 1):
-            w.writerow([i, r["threads"], r["processes"], r["data_count"], f"{r['time_s']:.6f}", f"{r['speedup']:.6f}", f"{r['efficiency_percent']:.2f}"])
+            avg_rgb_str = f"rgb({r['avg_rgb'][0]:.1f},{r['avg_rgb'][1]:.1f},{r['avg_rgb'][2]:.1f})"
+            w.writerow([i, r["threads"], r["processes"], r["data_count"], f"{r['time_s']:.6f}", f"{r['speedup']:.6f}", f"{r['efficiency_percent']:.2f}", avg_rgb_str, r["color_name"]])
 
 def save_experiments_json(results: List[Dict[str, Any]], out_json: str) -> None:
     # Simpan hasil eksperimen ke JSON
@@ -154,11 +155,42 @@ def save_experiments_json(results: List[Dict[str, Any]], out_json: str) -> None:
     with open(out_json, "w", encoding='utf-8') as f:
         json.dump({"experiments": results}, f, indent=2)
 
+# Color palette for nearest color lookup
+COLOR_PALETTE = {
+    "Hitam": (0, 0, 0),
+    "Putih": (255, 255, 255),
+    "Merah": (255, 0, 0),
+    "Hijau": (0, 128, 0),
+    "Biru": (0, 0, 255),
+    "Kuning": (255, 255, 0),
+    "Oranye": (255, 165, 0),
+    "Magenta": (255, 0, 255),
+    "Cyan": (0, 255, 255),
+    "Abu-abu": (128, 128, 128),
+    "Coklat": (150, 75, 0),
+    "Ungu": (128, 0, 128),
+    "Pink": (255, 192, 203),
+    "Krem": (240, 234, 214)
+}
+
+def color_name_from_rgb(rgb: Tuple[float, float, float]) -> Tuple[str, Tuple[int, int, int]]:
+    # Compute nearest color by Euclidean distance
+    r_i, g_i, b_i = int(round(rgb[0])), int(round(rgb[1])), int(round(rgb[2]))
+    best_name = "Hitam"  # Default to avoid None
+    best_dist = float('inf')
+    for name, (pr, pg, pb) in COLOR_PALETTE.items():
+        dist = (r_i - pr) ** 2 + (g_i - pg) ** 2 + (b_i - pb) ** 2
+        if dist < best_dist:
+            best_dist = dist
+            best_name = name
+    return best_name, (r_i, g_i, b_i)
+
 def print_experiments_table(results: List[Dict[str, Any]]) -> str:
     # Cetak tabel ASCII untuk eksperimen
     table = []
-    table.append("No | Jumlah Thread | Jumlah Process | Data/Task | Waktu (s) | Speedup | Efisiensi (%)")
-    table.append("-" * 80)
+    table.append("No | Jumlah Thread | Jumlah Process | Data/Task | Waktu (s) | Speedup | Efisiensi (%) | Avg RGB              | Warna")
+    table.append("-" * 120)
     for i, r in enumerate(results, 1):
-        table.append(f"{i:2} | {r['threads']:13} | {r['processes']:14} | {r['data_count']:9} | {r['time_s']:9.6f} | {r['speedup']:6.6f} | {r['efficiency_percent']:11.2f}")
+        avg_rgb_str = f"rgb({r['avg_rgb'][0]:.1f},{r['avg_rgb'][1]:.1f},{r['avg_rgb'][2]:.1f})"
+        table.append(f"{i:2} | {r['threads']:13} | {r['processes']:14} | {r['data_count']:9} | {r['time_s']:9.6f} | {r['speedup']:6.6f} | {r['efficiency_percent']:11.2f} | {avg_rgb_str:20} | {r['color_name']}")
     return "\n".join(table)

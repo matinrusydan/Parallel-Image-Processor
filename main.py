@@ -3,7 +3,7 @@
 import argparse
 import os
 import random
-from modules.utils import parse_nim, save_csv, save_json, plot_results, compute_global_avg, audit_color_variation, plot_experiments, save_experiments_csv, save_experiments_json, print_experiments_table
+from modules.utils import parse_nim, save_csv, save_json, plot_results, compute_global_avg, audit_color_variation, plot_experiments, save_experiments_csv, save_experiments_json, print_experiments_table, color_name_from_rgb
 from modules.io import gather_image_files
 from modules.pipeline import run_serial, run_configuration, run_experiments
 import json
@@ -17,7 +17,7 @@ def print_boxed_summary(name: str, nim: str, threads: int, processes: int, data:
     # Mencetak ringkasan dalam kotak seperti contoh.
     line1 = f"Hybrid Project by: {name} ({nim})"
     line2 = f"Threads: {threads} | Processes: {processes} | Data: {data}"
-    line3 = f"Total Time: {total_time:.2f}s | Speedup: {speedup:.2f} | Efficiency: {efficiency:.1f}%"
+    line3 = f"Total Time: {total_time:.2f}s | Speedup: {speedup:.1f} | Efficiency: {efficiency:.1f}%"
     width = max(len(line1), len(line2), len(line3)) + 4
     try:
         print("┌" + "─" * (width - 2) + "┐")
@@ -106,6 +106,12 @@ def main_cli():
         exp_result = run_experiments(experiment_configs, files, 3, args.verbose, args.heavy)
         exp_results = exp_result["results"]
 
+        # Attach avg_rgb and color_name to each result
+        for r in exp_results:
+            color_name, rgb_int = color_name_from_rgb(r["avg_rgb"])
+            r["color_name"] = color_name
+            r["avg_rgb_int"] = rgb_int
+
         # Simpan output eksperimen
         exp_csv = "results/experiments.csv"
         exp_json = "results/experiments.json"
@@ -118,6 +124,11 @@ def main_cli():
         table = print_experiments_table(exp_results)
         print("\nExperiments Results:")
         print(table)
+
+        # Print boxed summary for best config
+        best_time = min(r["time_s"] for r in exp_results)
+        best_config = next(r for r in exp_results if r["time_s"] == best_time)
+        print_boxed_summary(NAME, NIM, best_config["threads"], best_config["processes"], best_config["data_count"], best_config["time_s"], best_config["speedup"], best_config["efficiency_percent"])
 
         # Simpan laporan
         with open("results/experiments_report.txt", "w") as f:
@@ -237,10 +248,12 @@ def main_cli():
     # Cetak contoh rata-rata warna
     print("Sample avg colors (first 5):")
     for filename, (r, g, b) in zip([os.path.basename(f) for f in files[:5]], all_avg_colors[:5]):
-        print(f" - {filename}: ({r:.1f}, {g:.1f}, {b:.1f})")
+        color_name, rgb_int = color_name_from_rgb((r, g, b))
+        print(f" - {filename}: ({r:.1f}, {g:.1f}, {b:.1f}) -> rgb({rgb_int[0]},{rgb_int[1]},{rgb_int[2]}) ({color_name})")
 
     # Cetak rata-rata global dan variasi
-    print(f"Global avg color: ({global_avg[0]:.1f}, {global_avg[1]:.1f}, {global_avg[2]:.1f})")
+    global_color_name, global_rgb_int = color_name_from_rgb(global_avg)
+    print(f"Global avg color: ({global_avg[0]:.1f}, {global_avg[1]:.1f}, {global_avg[2]:.1f}) -> rgb({global_rgb_int[0]},{global_rgb_int[1]},{global_rgb_int[2]}) ({global_color_name})")
     print(f"Color variation: {variation_str} (stddev R: {stds[0]:.2f}, G: {stds[1]:.2f}, B: {stds[2]:.2f})")
 
 if __name__ == "__main__":

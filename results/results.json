@@ -1,0 +1,41 @@
+{
+  "name": "Matin Rusydan",
+  "nim": "237006030",
+  "params": {
+    "threads": 4,
+    "processes": 2,
+    "data": 300
+  },
+  "results": [
+    {
+      "mode": "serial",
+      "num_threads": 1,
+      "num_processes": 1,
+      "data_count": 300,
+      "time_s": "1.611393",
+      "throughput": "186.174334",
+      "speedup": 1.0,
+      "efficiency_percent": 100.0
+    },
+    {
+      "mode": "nim_config",
+      "num_threads": 4,
+      "num_processes": 2,
+      "data_count": 300,
+      "time_s": "1.654038",
+      "throughput": "181.374320",
+      "speedup": "0.974218",
+      "efficiency_percent": "48.71"
+    },
+    {
+      "mode": "alt_config",
+      "num_threads": 8,
+      "num_processes": 3,
+      "data_count": 300,
+      "time_s": "1.446232",
+      "throughput": "207.435656",
+      "speedup": "1.114201",
+      "efficiency_percent": "37.14"
+    }
+  ]
+}

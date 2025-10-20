@@ -47,13 +47,14 @@ def run_experiments(experiment_configs: List[Dict[str, Any]], file_list: List[st
             print(f"[EXPERIMENT] Running {label}: threads={threads}, processes={processes}, data={data_count}")
 
         times = []
+        result = None
         for run in range(runs_per_config):
             if verbose:
                 print(f"  Run {run+1}/{runs_per_config}...")
             if threads == 1 and processes == 1:
                 result = run_serial(config_files, verbose=False, heavy=heavy)
             else:
-                result = run_configuration(threads, processes, config_files, verbose=False)
+                result = run_configuration(threads, processes, config_files, verbose=False, heavy=heavy)
             times.append(result["elapsed"])
 
         median_time = statistics.median(times)
@@ -65,6 +66,23 @@ def run_experiments(experiment_configs: List[Dict[str, Any]], file_list: List[st
         speedup = serial_baseline / median_time if serial_baseline and median_time > 0 else 1.0
         efficiency = (speedup / max(1, processes)) * 100.0
 
+        # Compute avg_rgb for the configuration
+        if threads == 1 and processes == 1:
+            # For serial, use the last run_serial result
+            avg_colors = result["avg_colors"] if result else []
+        else:
+            # For parallel, run once more to get avg_colors
+            config_result = run_configuration(threads, processes, config_files, verbose=False, heavy=heavy)
+            avg_colors = config_result["avg_colors"]
+
+        if avg_colors:
+            avg_r = sum(r for r, _, _ in avg_colors) / len(avg_colors)
+            avg_g = sum(g for _, g, _ in avg_colors) / len(avg_colors)
+            avg_b = sum(b for _, _, b in avg_colors) / len(avg_colors)
+            avg_rgb = (avg_r, avg_g, avg_b)
+        else:
+            avg_rgb = (0.0, 0.0, 0.0)
+
         result_entry = {
             "label": label,
             "threads": threads,
@@ -74,7 +92,8 @@ def run_experiments(experiment_configs: List[Dict[str, Any]], file_list: List[st
             "throughput": throughput,
             "speedup": speedup,
             "efficiency_percent": efficiency,
-            "times": times
+            "times": times,
+            "avg_rgb": avg_rgb
         }
         results.append(result_entry)
 
@@ -111,4 +130,12 @@ def run_configuration(num_threads: int, num_processes: int, file_list: List[str]
     throughput = count / total_elapsed if total_elapsed > 0 else float("inf")
     # Ambil avg colors untuk audit
     avg_colors = [(r, g, b) for _, r, g, b in processed]
-    return {"elapsed": total_elapsed, "throughput": throughput, "processed": processed, "count": count, "avg_colors": avg_colors, "io_time": io_time, "cpu_time": cpu_time, "task_times": task_times}
+    # Compute aggregated avg_rgb for configuration
+    if avg_colors:
+        avg_r = sum(r for r, _, _ in avg_colors) / len(avg_colors)
+        avg_g = sum(g for _, g, _ in avg_colors) / len(avg_colors)
+        avg_b = sum(b for _, _, b in avg_colors) / len(avg_colors)
+        avg_rgb = (avg_r, avg_g, avg_b)
+    else:
+        avg_rgb = (0.0, 0.0, 0.0)
+    return {"elapsed": total_elapsed, "throughput": throughput, "processed": processed, "count": count, "avg_colors": avg_colors, "avg_rgb": avg_rgb, "io_time": io_time, "cpu_time": cpu_time, "task_times": task_times}

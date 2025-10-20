@@ -1,0 +1,7 @@
+Experiments Verification
+==============================
+Total configs: 5
+Files created: results/experiments.csv, results/experiments.json, time_vs_threads.png, time_vs_processes.png, speedup_vs_config.png
+Table printed: YES
+Median times used: YES
+Status: SUCCESS
